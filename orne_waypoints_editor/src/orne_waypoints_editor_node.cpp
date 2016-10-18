@@ -31,7 +31,7 @@ using namespace visualization_msgs;
 class WaypointsEditor{
 public:
     WaypointsEditor() :
-        filename_(""), fp_flag_(false), rate_(10)
+        filename_(""), fp_flag_(false), rate_(1)
     {
         ros::NodeHandle private_nh("~");
         private_nh.param("world_frame", world_frame_, std::string("map"));
