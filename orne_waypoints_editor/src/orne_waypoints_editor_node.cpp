@@ -8,6 +8,8 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/InteractiveMarker.h>
+#include <visualization_msgs/InteractiveMarkerUpdate.h>
 #include <std_msgs/String.h>
 
 #include <std_srvs/Trigger.h>
@@ -31,7 +33,7 @@ using namespace visualization_msgs;
 class WaypointsEditor{
 public:
     WaypointsEditor() :
-        filename_(""), fp_flag_(false), rate_(1)
+        filename_(""), fp_flag_(false), rate_(2)
     {
         ros::NodeHandle private_nh("~");
         private_nh.param("world_frame", world_frame_, std::string("map"));
@@ -71,16 +73,8 @@ public:
     void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback ){
         std::ostringstream s;
         s << "Feedback from marker '" << feedback->marker_name << "'";
-        // s << "Feedback from marker '" << feedback->marker_name << "'";
-        //   << " /control '"<< feedback->control_name << "' ";
     
         std::ostringstream mouse_point_ss;
-        // if(feedback->mouse_point_valid){
-        //   mouse_point_ss << "at" << feedback->mouse_point.x
-        //     << "," << feedback->mouse_point.y
-        //     << "," << feedback->mouse_point.z
-        //     << "in frame" << feedback->header.frame_id;
-        // }
     
         switch(feedback->event_type){
           case visualization_msgs::InteractiveMarkerFeedback::BUTTON_CLICK:
@@ -101,18 +95,7 @@ public:
                 << "," << feedback->pose.orientation.x
                 << "," << feedback->pose.orientation.y
                 << "," << feedback->pose.orientation.z);
-                // << "\nframe:" << feedback->header.frame_id
-                // << "time" << feedback->header.stamp.sec << "sec,"
-                // << feedback->header.stamp.nsec << "nsec");
             break;
-    
-          // case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
-          //   ROS_INFO_STREAM(s.str() << ":mouse down" << mouse_point_ss.str() << ".");
-          //   break;
-    
-          // case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
-          //   ROS_INFO_STREAM(s.str() << ":mouse up" << mouse_point_ss.str() << ".");
-          //   break;
         }
 
         server->applyChanges();
@@ -121,7 +104,8 @@ public:
             finish_pose_.pose = feedback->pose;
         } else {
           std::string str_wp_num = feedback->marker_name;
-          waypoints_.at(std::stoi(str_wp_num.substr(8))) = feedback->pose.position;
+          // waypoints_.at(std::stoi(str_wp_num.substr(8))) = feedback->pose.position;
+          waypoints_.at(std::stoi(str_wp_num)) = feedback->pose.position;
         }
     }
 
@@ -139,89 +123,75 @@ public:
     void wpDeleteCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
         std::string str_wp_num = feedback->marker_name;
         ROS_INFO_STREAM("delete : " << feedback->marker_name);
-        resetMarkerDescription();
-        waypoints_.erase(waypoints_.begin() + std::stoi(str_wp_num.substr(8)));
-        makeMarker();
+        // int wp_num = std::stoi(str_wp_num.substr(8));
+        int wp_num = std::stoi(str_wp_num);
+        waypoints_.erase(waypoints_.begin() + wp_num);
+        for (int i=wp_num; i<waypoints_.size(); i++) {
+            geometry_msgs::Pose p;
+            p.position = waypoints_.at(i);
+            // server->setPose("waypoint" + std::to_string(i), p);
+            server->setPose(std::to_string(i), p);
+        }
+        // server->erase("waypoint" + std::to_string((int)waypoints_.size()));
+        server->erase(std::to_string((int)waypoints_.size()));
+        server->applyChanges();
     }
 
     void wpInsertCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
         std::string str_wp_num = feedback->marker_name;
-        ROS_INFO_STREAM("insert : " << feedback->menu_entry_id);
+        ROS_INFO_STREAM("menu_entry_id : " << feedback->menu_entry_id);
+        // int wp_num= std::stoi(str_wp_num.substr(8));
+        int wp_num= std::stoi(str_wp_num);
+        ROS_INFO_STREAM("insert : " << str_wp_num);
+        geometry_msgs::Pose p = feedback->pose;
         if (feedback->menu_entry_id == 3){
-            geometry_msgs::Pose pose = feedback->pose;
-            pose.position.x = pose.position.x - 1.0;
-            waypoints_.insert(waypoints_.begin() + std::stoi(str_wp_num.substr(8)), pose.position);           
+            p.position.x -= 1.0;
+            waypoints_.insert(waypoints_.begin() + wp_num, p.position);
+
         } else if (feedback->menu_entry_id == 4) {
-            geometry_msgs::Pose pose = feedback->pose;
-            pose.position.x = pose.position.x + 1.0;
-            waypoints_.insert(waypoints_.begin() + std::stoi(str_wp_num.substr(8)) + 1, pose.position);           
+            p.position.x += + 1.0;
+            waypoints_.insert(waypoints_.begin() + wp_num + 1, p.position);
+
         }
-        makeMarker();
+
+        for (int i=wp_num; i<waypoints_.size()-1; i++) {
+            geometry_msgs::Pose p;
+            p.position = waypoints_.at(i);
+            // server->setPose("waypoint" + std::to_string(i), p);
+            server->setPose(std::to_string(i), p);
+        }
+        // makeWpInteractiveMarker("waypoint"+std::to_string(waypoints_.size()-1), waypoints_.at(waypoints_.size()-1));
+        makeWpInteractiveMarker(std::to_string(waypoints_.size()-1), waypoints_.at(waypoints_.size()-1));
+        server->applyChanges();
     }
 
     void fpDeleteCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
-        std::string str_wp_num = feedback->marker_name;
         ROS_INFO_STREAM("delete : " << feedback->marker_name);
-        resetMarkerDescription();
+        server->erase(feedback->marker_name);
         fp_flag_ = false;
-        makeMarker();
+        server->applyChanges();
     }
 
     void makeMarker(){
-        server->clear();
-        server->applyChanges();
-
-        makeWaypointsMarker();
+        makeWpsInteractiveMarker();
         makeFinishPoseMarker();
 
-        applyMenu();
         server->applyChanges();
-    }
-
-    void resetMarkerDescription(){
-        for (int i=0; i!=waypoints_.size(); i++){
-            Marker marker;
-            marker.type = Marker::TEXT_VIEW_FACING;
-            marker.text = std::to_string(i);
-            marker.header.frame_id = world_frame_;
-            marker.header.stamp = ros::Time::now();
-            std::stringstream name;
-            name << "waypoint";
-            marker.ns = name.str();
-            marker.id = i;
-            uint8_t DELETEALL = 3;
-            marker.action = DELETEALL;
-            marker_description_.markers.push_back(marker);
-        }
-        if (fp_flag_) {
-            Marker marker;
-            marker.type = Marker::TEXT_VIEW_FACING;
-            marker.text = "goal";
-            marker.header.frame_id = world_frame_;
-            marker.header.stamp = ros::Time::now();
-            std::stringstream name;
-            name << "finish pose";
-            marker.ns = name.str();
-            marker.id = 0;
-            uint8_t DELETEALL = 3;
-            marker.action = DELETEALL;
-            marker_description_.markers.push_back(marker);
-        }
-        marker_description_pub_.publish(marker_description_);
     }
 
     void publishMarkerDescription(){
-
-        for (int i=0; i!=waypoints_.size(); i++){
+        marker_description_.markers.clear();
+        for(int i=0; i!=waypoints_.size(); i++){
             Marker marker;
             marker.type = Marker::TEXT_VIEW_FACING;
             marker.text = std::to_string(i);
             marker.header.frame_id = world_frame_;
-            marker.header.stamp = ros::Time::now();
+            marker.header.stamp = ros::Time(0);
             std::stringstream name;
             name << "waypoint";
             marker.ns = name.str();
             marker.id = i;
+            marker.lifetime = ros::Duration(0.5);
             marker.pose.position = waypoints_.at(i);
             marker.pose.position.z = 3.0;
             marker.scale.z = 2.0;
@@ -231,17 +201,17 @@ public:
             marker.color.a = 1.0;
             marker.action = visualization_msgs::Marker::ADD;
             marker_description_.markers.push_back(marker);
-        }
-        if (fp_flag_) {
+        }if(fp_flag_){
             Marker marker;
             marker.type = Marker::TEXT_VIEW_FACING;
             marker.text = "goal";
             marker.header.frame_id = world_frame_;
-            marker.header.stamp = ros::Time::now();
+            marker.header.stamp = ros::Time(0);
             std::stringstream name;
             name << "finish pose";
             marker.ns = name.str();
             marker.id = 0;
+            marker.lifetime = ros::Duration(0.5);
             marker.pose = finish_pose_.pose;
             marker.pose.position.z = 3.0;
             marker.scale.z = 2.0;
@@ -255,48 +225,61 @@ public:
         marker_description_pub_.publish(marker_description_);
     }
 
-    void makeWaypointsMarker(){
+    Marker makeWpMaker(){
+        Marker marker;
+        marker.type = Marker::SPHERE;
+        marker.scale.x = 0.8;
+        marker.scale.y = 0.8;
+        marker.scale.z = 0.8;
+        marker.color.r = 0.08;
+        marker.color.g = 0.0;
+        marker.color.b = 0.8;
+        marker.color.a = 0.5;
 
+        return marker;
+    }
+    
+    InteractiveMarkerControl& makeWpControl(InteractiveMarker &msg) {
+        InteractiveMarkerControl control;
+        control.markers.clear();
+        control.orientation.w = 1;
+        control.orientation.x = 0;
+        control.orientation.y = 1;
+        control.orientation.z = 0;
+        control.interaction_mode = InteractiveMarkerControl::MOVE_PLANE;
+        control.always_visible = true;
+        control.markers.push_back(makeWpMaker());
+        msg.controls.push_back(control);
+
+        return msg.controls.back();
+    }
+
+    void makeWpInteractiveMarker(std::string name, geometry_msgs::Point point){
+        InteractiveMarker int_marker;
+        int_marker.controls.clear();
+        int_marker.header.frame_id = world_frame_;
+        int_marker.pose.position = point;
+        int_marker.scale = 1;
+        int_marker.name = name;
+        int_marker.description = name;
+
+        int_marker.controls.push_back(makeWpControl(int_marker));
+
+        server->insert(int_marker, boost::bind(&WaypointsEditor::processFeedback, this, _1));
+        wp_menu_handler_.apply(*server, name);
+    }
+
+    void makeWpsInteractiveMarker(){
         for (int i=0; i!=waypoints_.size(); i++){
-            InteractiveMarker int_marker;
-            int_marker.header.frame_id = world_frame_;
-            int_marker.pose.position = waypoints_.at(i);
-            int_marker.scale = 1;
-            int_marker.name = "waypoint"+std::to_string(i);
-            int_marker.description = "waypoint"+std::to_string(i);
-
-            InteractiveMarkerControl control;
-            control.orientation.w = 1;
-            control.orientation.x = 0;
-            control.orientation.y = 1;
-            control.orientation.z = 0;
-            control.interaction_mode = InteractiveMarkerControl::MOVE_PLANE;
-            int_marker.controls.push_back(control);
-    
-            Marker marker;
-            marker.type = Marker::SPHERE;
-            marker.scale.x = 0.8;
-            marker.scale.y = 0.8;
-            marker.scale.z = 0.8;
-            marker.color.r = 0.08;
-            marker.color.g = 0.0;
-            marker.color.b = 0.8;
-            marker.color.a = 0.5;
-            control.markers.push_back(marker);
-            
-            control.always_visible = true;
-            int_marker.controls.push_back(control);
-    
-            server->insert(int_marker);
-            server->setCallback(int_marker.name, boost::bind(&WaypointsEditor::processFeedback, this, _1));
+            // makeWpInteractiveMarker("waypoint"+std::to_string(i), waypoints_.at(i));
+            makeWpInteractiveMarker(std::to_string(i), waypoints_.at(i));
         }
-        
     }
 
     void makeFinishPoseMarker(){
-
         if (fp_flag_) {
             InteractiveMarker int_marker;
+            int_marker.controls.clear();
             int_marker.header.frame_id = world_frame_;
             int_marker.pose = finish_pose_.pose;
             int_marker.scale = 1;
@@ -304,12 +287,12 @@ public:
             int_marker.description = "finish_pose";
 
             InteractiveMarkerControl control;
+            control.markers.clear();
             control.orientation.w = 1;
             control.orientation.x = 0;
             control.orientation.y = 1;
             control.orientation.z = 0;
             control.interaction_mode = InteractiveMarkerControl::MOVE_ROTATE;
-            int_marker.controls.push_back(control);
     
             Marker marker;
             marker.type = Marker::ARROW;
@@ -325,19 +308,9 @@ public:
             control.always_visible = true;
             int_marker.controls.push_back(control);
     
-            server->insert(int_marker);
-            server->setCallback(int_marker.name, boost::bind(&WaypointsEditor::processFeedback, this, _1));
-        }
-    }
-
-    void applyMenu(){
-        for (int i=0; i!=waypoints_.size(); i++){
-            wp_menu_handler_.apply(*server, "waypoint"+std::to_string(i));
-        }
-        if (fp_flag_){
+            server->insert(int_marker, boost::bind(&WaypointsEditor::processFeedback, this, _1));
             fp_menu_handler_.apply(*server, "finish_pose");
         }
-        server->applyChanges();
     }
 
     bool readFile(const std::string &filename){
@@ -410,8 +383,11 @@ public:
 
     void waypointsVizCallback(const geometry_msgs::PointStamped &msg){
         ROS_INFO_STREAM("point = " << msg);
+        // makeWpInteractiveMarker("waypoint"+std::to_string(waypoints_.size()), msg.point);
+        makeWpInteractiveMarker(std::to_string(waypoints_.size()), msg.point);
+        server->applyChanges();
+
         waypoints_.push_back(msg.point);
-        makeMarker();
     }
 
     void waypointsJoyCallback(const sensor_msgs::Joy &msg) {
@@ -419,14 +395,16 @@ public:
         if(msg.buttons[save_joy_button_] == 1 && (ros::Time::now() - saved_time).toSec() > 3.0){
             tf::StampedTransform robot_gl;
             try{
-                tf_listener_.lookupTransform(world_frame_, robot_frame_, ros::Time(0.0), robot_gl);
+                tf_listener_.lookupTransform(world_frame_, robot_frame_, msg.header.stamp, robot_gl);
                 geometry_msgs::Point point;
                 point.x = robot_gl.getOrigin().x();
                 point.y = robot_gl.getOrigin().y();
                 point.z = robot_gl.getOrigin().z();
+                // makeWpInteractiveMarker("waypoint"+std::to_string(waypoints_.size()), point);
+                makeWpInteractiveMarker(std::to_string(waypoints_.size()), point);
                 waypoints_.push_back(point);
-                saved_time = ros::Time::now();
-                makeMarker();
+                server->applyChanges();
+                saved_time = msg.header.stamp;
             }catch(tf::TransformException &e){
                 ROS_WARN_STREAM("tf::TransformException: " << e.what());
             }
@@ -436,8 +414,13 @@ public:
     void finishPoseCallback(const geometry_msgs::PoseStamped &msg){
         ROS_INFO_STREAM("pose = " << msg);
         finish_pose_ = msg;
-        fp_flag_ = true;
-        makeMarker();
+        if (fp_flag_) {
+            server->setPose("finish_pose", msg.pose);
+        } else {
+            fp_flag_ = true;
+            makeFinishPoseMarker();
+        }
+        server->applyChanges();
     }
 
     bool saveWaypointsCallback(std_srvs::Trigger::Request &request, std_srvs::Trigger::Response &response) {
