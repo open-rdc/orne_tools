@@ -103,9 +103,9 @@ public:
         if (feedback->marker_name == "finish_pose") {
             finish_pose_.pose = feedback->pose;
         } else {
-          std::string str_wp_num = feedback->marker_name;
+          // std::string str_wp_num = feedback->marker_name;
           // waypoints_.at(std::stoi(str_wp_num.substr(8))) = feedback->pose.position;
-          waypoints_.at(std::stoi(str_wp_num)) = feedback->pose.position;
+          waypoints_.at(std::stoi(feedback->marker_name)) = feedback->pose.position;
         }
     }
 
@@ -117,14 +117,13 @@ public:
         wp_mode = wp_menu_handler_.insert(wp_insert_menu_handler, "Next", boost::bind(&WaypointsEditor::wpInsertCb, this, _1));
 
         interactive_markers::MenuHandler::EntryHandle fp_delete_menu_handler = fp_menu_handler_.insert("delete", boost::bind(&WaypointsEditor::fpDeleteCb, this, _1));
-        
     }
 
     void wpDeleteCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
-        std::string str_wp_num = feedback->marker_name;
+        // std::string str_wp_num = feedback->marker_name;
         ROS_INFO_STREAM("delete : " << feedback->marker_name);
         // int wp_num = std::stoi(str_wp_num.substr(8));
-        int wp_num = std::stoi(str_wp_num);
+        int wp_num = std::stoi(feedback->marker_name);
         waypoints_.erase(waypoints_.begin() + wp_num);
         for (int i=wp_num; i<waypoints_.size(); i++) {
             geometry_msgs::Pose p;
@@ -138,11 +137,11 @@ public:
     }
 
     void wpInsertCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
-        std::string str_wp_num = feedback->marker_name;
+        // std::string str_wp_num = feedback->marker_name;
         ROS_INFO_STREAM("menu_entry_id : " << feedback->menu_entry_id);
         // int wp_num= std::stoi(str_wp_num.substr(8));
-        int wp_num= std::stoi(str_wp_num);
-        ROS_INFO_STREAM("insert : " << str_wp_num);
+        int wp_num= std::stoi(feedback->marker_name);
+        ROS_INFO_STREAM("insert : " << feedback->menu_entry_id);
         geometry_msgs::Pose p = feedback->pose;
         if (feedback->menu_entry_id == 3){
             p.position.x -= 1.0;
@@ -151,7 +150,6 @@ public:
         } else if (feedback->menu_entry_id == 4) {
             p.position.x += + 1.0;
             waypoints_.insert(waypoints_.begin() + wp_num + 1, p.position);
-
         }
 
         for (int i=wp_num; i<waypoints_.size()-1; i++) {
@@ -392,7 +390,7 @@ public:
 
     void waypointsJoyCallback(const sensor_msgs::Joy &msg) {
         static ros::Time saved_time(0.0);
-        if(msg.buttons[save_joy_button_] == 1 && (ros::Time::now() - saved_time).toSec() > 3.0){
+        if(msg.buttons[save_joy_button_] == 1 && (ros::Time(0) - saved_time).toSec() > 3.0){
             tf::StampedTransform robot_gl;
             try{
                 tf_listener_.lookupTransform(world_frame_, robot_frame_, msg.header.stamp, robot_gl);
