@@ -113,8 +113,6 @@ public:
 
         interactive_markers::MenuHandler::EntryHandle wp_mode = wp_menu_handler_.insert(wp_insert_menu_handler, "Prev", boost::bind(&WaypointsEditor::wpInsertCb, this, _1));
         wp_mode = wp_menu_handler_.insert(wp_insert_menu_handler, "Next", boost::bind(&WaypointsEditor::wpInsertCb, this, _1));
-
-        interactive_markers::MenuHandler::EntryHandle fp_delete_menu_handler = fp_menu_handler_.insert("delete", boost::bind(&WaypointsEditor::fpDeleteCb, this, _1));
     }
 
     void wpDeleteCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
@@ -150,13 +148,6 @@ public:
             server->setPose(std::to_string(i), p);
         }
         makeWpInteractiveMarker(std::to_string(waypoints_.size()-1), waypoints_.at(waypoints_.size()-1));
-        server->applyChanges();
-    }
-
-    void fpDeleteCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
-        ROS_INFO_STREAM("delete : " << feedback->marker_name);
-        server->erase(feedback->marker_name);
-        fp_flag_ = false;
         server->applyChanges();
     }
 
@@ -296,7 +287,6 @@ public:
             int_marker.controls.push_back(control);
     
             server->insert(int_marker, boost::bind(&WaypointsEditor::processFeedback, this, _1));
-            fp_menu_handler_.apply(*server, "finish_pose");
         }
     }
 
@@ -485,7 +475,6 @@ private:
 
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
     interactive_markers::MenuHandler wp_menu_handler_;
-    interactive_markers::MenuHandler fp_menu_handler_;
 
 };
 
