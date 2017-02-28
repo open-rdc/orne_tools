@@ -223,7 +223,7 @@ public:
         marker_description_pub_.publish(marker_description_);
     }
 
-    Marker makeWpMaker(){
+    Marker makeWpMarker(){
         Marker marker;
         marker.type = Marker::SPHERE;
         marker.scale.x = 0.8;
@@ -246,7 +246,7 @@ public:
         control.orientation.z = 0;
         control.interaction_mode = InteractiveMarkerControl::MOVE_PLANE;
         control.always_visible = true;
-        control.markers.push_back(makeWpMaker());
+        control.markers.push_back(makeWpMarker());
         msg.controls.push_back(control);
 
         return msg.controls.back();
