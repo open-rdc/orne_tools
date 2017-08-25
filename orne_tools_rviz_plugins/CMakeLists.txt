@@ -9,14 +9,18 @@ catkin_package()
 include_directories(${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
-find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
-include(${QT_USE_FILE})
+set(CMAKE_AUTOMOC ON)
+if(rviz_QT_VERSION VERSION_LESS "5")
+  message(STATUS "Using Qt4 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
+  find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
+  include(${QT_USE_FILE})
+else()
+  message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
+  find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED Core Widgets)
+  set(QT_LIBRARIES Qt5::Widgets)
+endif()
 
 add_definitions(-DQT_NO_KEYWORDS)
-
-qt4_wrap_cpp(MOC_FILES
-  src/save_trigger_panel.h
-)
 
 set(SOURCE_FILES
   src/save_trigger_panel.cpp
