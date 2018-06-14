@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-  <arg name="map_file" default="$(find orne_navigation_executor)/maps/mymap.yaml"/>
+  <arg name="map_file" default="$(find orne_navigation_executor)/maps/mymap"/>
   <arg name="waypoints_file" default="$(find orne_navigation_executor)/waypoints_cfg/waypoints.yaml"/>
   <arg name="save_joy_button" default="0"/>
   <arg name="joy_config" default="elecom_joy"/>
@@ -12,7 +12,6 @@
     <arg name="joy_dev" value="$(arg joy_dev)"/>
   </include>
 
-  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)"/>
 
   <node pkg="orne_waypoints_editor" name="orne_waypoints_editor" type="orne_waypoints_editor" output="screen">
     <param name="filename" value="$(arg waypoints_file)"/>
