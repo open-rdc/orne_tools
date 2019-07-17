@@ -851,25 +851,25 @@ public:
         for(int i=0; i < suspends_.size(); i++){
             ofs << "suspend_pose" << std::to_string(i+1) << ":" << std::endl;
             ofs << "    " << "position:" << std::endl;
-            ofs << "     x: " << suspends_[i].position.x << std::endl;
-            ofs << "     y: " << suspends_[i].position.y << std::endl;
-            ofs << "     z: " << suspends_[i].position.z << std::endl;
+            ofs << "      x: " << suspends_[i].position.x << std::endl;
+            ofs << "      y: " << suspends_[i].position.y << std::endl;
+            ofs << "      z: " << suspends_[i].position.z << std::endl;
             ofs << "    " << "orientation:" << std::endl;
-            ofs << "     x: " << suspends_[i].orientation.x << std::endl;
-            ofs << "     y: " << suspends_[i].orientation.y << std::endl;
-            ofs << "     z: " << suspends_[i].orientation.z << std::endl;
-            ofs << "     w: " << suspends_[i].orientation.w << std::endl;
+            ofs << "      x: " << suspends_[i].orientation.x << std::endl;
+            ofs << "      y: " << suspends_[i].orientation.y << std::endl;
+            ofs << "      z: " << suspends_[i].orientation.z << std::endl;
+            ofs << "      w: " << suspends_[i].orientation.w << std::endl;
 
             ofs << "resume_pose" << std::to_string(i+1) << ":" << std::endl;
             ofs << "    " << "position:" << std::endl;
-            ofs << "     x: " << resumes_[i].position.x << std::endl;
-            ofs << "     y: " << resumes_[i].position.y << std::endl;
-            ofs << "     z: " << resumes_[i].position.z << std::endl;
+            ofs << "      x: " << resumes_[i].position.x << std::endl;
+            ofs << "      y: " << resumes_[i].position.y << std::endl;
+            ofs << "      z: " << resumes_[i].position.z << std::endl;
             ofs << "    " << "orientation:" << std::endl;
-            ofs << "     x: " << resumes_[i].orientation.x << std::endl;
-            ofs << "     y: " << resumes_[i].orientation.y << std::endl;
-            ofs << "     z: " << resumes_[i].orientation.z << std::endl;
-            ofs << "     w: " << resumes_[i].orientation.w << std::endl;
+            ofs << "      x: " << resumes_[i].orientation.x << std::endl;
+            ofs << "      y: " << resumes_[i].orientation.y << std::endl;
+            ofs << "      z: " << resumes_[i].orientation.z << std::endl;
+            ofs << "      w: " << resumes_[i].orientation.w << std::endl;
         }
         ofs.close();
 
