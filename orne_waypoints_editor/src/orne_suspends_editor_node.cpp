@@ -673,8 +673,25 @@ public:
                 YAML::Parser parser(ifs);
                 parser.GetNextDocument(node);
             #endif
-       
-            std::cout << "suspend_size" << suspend_size_ << std::endl;
+
+
+            std::string node_name = "size";
+            #ifdef NEW_YAMLCPP
+                const YAML::Node &rp_node_tmp = node[node_name];
+                const YAML::Node *rp_node = rp_node_tmp ? &rp_node_tmp : NULL;
+            #else
+                const YAML::Node *rp_node = node.FindValue(node_name);
+            #endif
+
+            if(rp_node != NULL){
+                (*rp_node) >> suspend_size_;
+                std::cout << "read size " << suspend_size_ << std::endl;
+            }else{
+                return false;
+            }
+
+   
+        std::cout << "suspend_size" << suspend_size_ << std::endl;
             for(int i=0;i<suspend_size_;i++){
                 std::string node_name = "suspend_pose" + std::to_string(i+1);
                 #ifdef NEW_YAMLCPP
@@ -829,6 +846,8 @@ public:
 
         std::ofstream ofs(suspend_filename_.c_str(), std::ios::out);
         
+
+        ofs << "size" << ": " << suspends_.size() << std::endl;
         for(int i=0; i < suspends_.size(); i++){
             ofs << "suspend_pose" << std::to_string(i+1) << ":" << std::endl;
             ofs << "    " << "position:" << std::endl;
