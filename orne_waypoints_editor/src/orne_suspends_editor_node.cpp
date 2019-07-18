@@ -805,7 +805,7 @@ public:
 
     bool save(){
         if (fp_flag_) {
-            std::ofstream ofs(suspend_filename_.c_str(), std::ios::out);
+            std::ofstream ofs(filename_.c_str(), std::ios::out);
             
             ofs << "waypoints:" << std::endl;
             for(int i=0; i < waypoints_.size(); i++){
@@ -833,7 +833,7 @@ public:
 
             ofs.close();
 
-            ROS_INFO_STREAM("write success");
+            ROS_INFO_STREAM("waypoint write success");
             return true;
         } else {
             ROS_WARN_STREAM("Please set finish_pose");
@@ -873,7 +873,7 @@ public:
         }
         ofs.close();
 
-        ROS_INFO_STREAM("write success");
+        ROS_INFO_STREAM("suspend write success");
         return true;
     }
 
