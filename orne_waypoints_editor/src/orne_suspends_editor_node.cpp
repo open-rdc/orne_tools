@@ -673,73 +673,52 @@ public:
                 YAML::Parser parser(ifs);
                 parser.GetNextDocument(node);
             #endif
-
-
-            std::string node_name = "size";
+           
             #ifdef NEW_YAMLCPP
-                const YAML::Node &rp_node_tmp = node[node_name];
-                const YAML::Node *rp_node = rp_node_tmp ? &rp_node_tmp : NULL;
+                const YAML::Node &sp_node_tmp = node["suspend_pose"];
+                const YAML::Node *sp_node = sp_node_tmp ? &sp_node_tmp : NULL;
             #else
-                const YAML::Node *rp_node = node.FindValue(node_name);
+                const YAML::Node *sp_node = node.FindValue("suspend_pose");
             #endif
 
-            if(rp_node != NULL){
-                (*rp_node) >> suspend_size_;
-                std::cout << "read size " << suspend_size_ << std::endl;
+            if(sp_node != NULL){
+                for(int i=0;i<sp_node->size();i++){
+                    geometry_msgs::Pose pose;
+                    (*sp_node)[i]["pose"]["position"]["x"] >> pose.position.x;
+                    (*sp_node)[i]["pose"]["position"]["y"] >> pose.position.y;
+                    (*sp_node)[i]["pose"]["position"]["z"] >> pose.position.z;
+                    (*sp_node)[i]["pose"]["orientation"]["x"] >> pose.orientation.x;
+                    (*sp_node)[i]["pose"]["orientation"]["y"] >> pose.orientation.y;
+                    (*sp_node)[i]["pose"]["orientation"]["z"] >> pose.orientation.z;
+                    (*sp_node)[i]["pose"]["orientation"]["w"] >> pose.orientation.w;
+
+                    suspends_.push_back(pose);
+                }
             }else{
                 return false;
             }
 
-   
-        std::cout << "suspend_size" << suspend_size_ << std::endl;
-            for(int i=0;i<suspend_size_;i++){
-                std::string node_name = "suspend_pose" + std::to_string(i+1);
-                #ifdef NEW_YAMLCPP
-                    const YAML::Node &sp_node_tmp = node[node_name];
-                    const YAML::Node *sp_node = sp_node_tmp ? &sp_node_tmp : NULL;
-                #else
-                    const YAML::Node *sp_node = node.FindValue(node_name);
-                #endif
+            #ifdef NEW_YAMLCPP
+                const YAML::Node &rp_node_tmp = node["resume_pose"];
+                const YAML::Node *rp_node = rp_node_tmp ? &rp_node_tmp : NULL;
+            #else
+                const YAML::Node *rp_node = node.FindValue("resume_pose");
+            #endif
 
-                if(sp_node != NULL){
+            if(rp_node != NULL){
+                for(int i=0;i<rp_node->size();i++){
                     geometry_msgs::Pose pose;
-                    (*sp_node)["position"]["x"] >> pose.position.x;
-                    (*sp_node)["position"]["y"] >> pose.position.y;
-                    (*sp_node)["position"]["z"] >> pose.position.z;
-                    (*sp_node)["orientation"]["x"] >> pose.orientation.x;
-                    (*sp_node)["orientation"]["y"] >> pose.orientation.y;
-                    (*sp_node)["orientation"]["z"] >> pose.orientation.z;
-                    (*sp_node)["orientation"]["w"] >> pose.orientation.w;
-
-                    suspends_.push_back(pose);
-                }else{
-                    return false;
-                }
-
-                node_name = "resume_pose" + std::to_string(i+1);
-                #ifdef NEW_YAMLCPP
-                    const YAML::Node &rp_node_tmp = node[node_name];
-                    const YAML::Node *rp_node = rp_node_tmp ? &rp_node_tmp : NULL;
-                #else
-                    const YAML::Node *rp_node = node.FindValue(node_name);
-                #endif
-
-                if(rp_node != NULL){
-
-                    geometry_msgs::Pose pose;
-                    (*rp_node)["position"]["x"] >> pose.position.x;
-                    (*rp_node)["position"]["y"] >> pose.position.y;
-                    (*rp_node)["position"]["z"] >> pose.position.z;
-                    (*rp_node)["orientation"]["x"] >> pose.orientation.x;
-                    (*rp_node)["orientation"]["y"] >> pose.orientation.y;
-                    (*rp_node)["orientation"]["z"] >> pose.orientation.z;
-                    (*rp_node)["orientation"]["w"] >> pose.orientation.w;
-
+                    (*rp_node)[i]["pose"]["position"]["x"] >> pose.position.x;
+                    (*rp_node)[i]["pose"]["position"]["y"] >> pose.position.y;
+                    (*rp_node)[i]["pose"]["position"]["z"] >> pose.position.z;
+                    (*rp_node)[i]["pose"]["orientation"]["x"] >> pose.orientation.x;
+                    (*rp_node)[i]["pose"]["orientation"]["y"] >> pose.orientation.y;
+                    (*rp_node)[i]["pose"]["orientation"]["z"] >> pose.orientation.z;
+                    (*rp_node)[i]["pose"]["orientation"]["w"] >> pose.orientation.w;
                     resumes_.push_back(pose);
-                }else{
-                    return false;
                 }
- 
+            }else{
+                return false;
             }
 
         }catch(YAML::ParserException &e){
@@ -848,29 +827,34 @@ public:
         
 
         ofs << "size" << ": " << suspends_.size() << std::endl;
+        ofs << "suspend_pose" << ":" << std::endl;
         for(int i=0; i < suspends_.size(); i++){
-            ofs << "suspend_pose" << std::to_string(i+1) << ":" << std::endl;
-            ofs << "    " << "position:" << std::endl;
-            ofs << "      x: " << suspends_[i].position.x << std::endl;
-            ofs << "      y: " << suspends_[i].position.y << std::endl;
-            ofs << "      z: " << suspends_[i].position.z << std::endl;
-            ofs << "    " << "orientation:" << std::endl;
-            ofs << "      x: " << suspends_[i].orientation.x << std::endl;
-            ofs << "      y: " << suspends_[i].orientation.y << std::endl;
-            ofs << "      z: " << suspends_[i].orientation.z << std::endl;
-            ofs << "      w: " << suspends_[i].orientation.w << std::endl;
-
-            ofs << "resume_pose" << std::to_string(i+1) << ":" << std::endl;
-            ofs << "    " << "position:" << std::endl;
-            ofs << "      x: " << resumes_[i].position.x << std::endl;
-            ofs << "      y: " << resumes_[i].position.y << std::endl;
-            ofs << "      z: " << resumes_[i].position.z << std::endl;
-            ofs << "    " << "orientation:" << std::endl;
-            ofs << "      x: " << resumes_[i].orientation.x << std::endl;
-            ofs << "      y: " << resumes_[i].orientation.y << std::endl;
-            ofs << "      z: " << resumes_[i].orientation.z << std::endl;
-            ofs << "      w: " << resumes_[i].orientation.w << std::endl;
+            ofs << "    " << "- pose:" << std::endl;
+            ofs << "        " << "position:" << std::endl;
+            ofs << "        x: " << suspends_[i].position.x << std::endl;
+            ofs << "        y: " << suspends_[i].position.y << std::endl;
+            ofs << "        z: " << suspends_[i].position.z << std::endl;
+            ofs << "        " << "orientation:" << std::endl;
+            ofs << "        x: " << suspends_[i].orientation.x << std::endl;
+            ofs << "        y: " << suspends_[i].orientation.y << std::endl;
+            ofs << "        z: " << suspends_[i].orientation.z << std::endl;
+            ofs << "        w: " << suspends_[i].orientation.w << std::endl;
         }
+
+        ofs << "resume_pose" << ":" << std::endl;
+        for(int i=0; i < resumes_.size(); i++){
+            ofs << "    " << "- pose:" << std::endl;
+            ofs << "        " << "position:" << std::endl;
+            ofs << "        x: " << resumes_[i].position.x << std::endl;
+            ofs << "        y: " << resumes_[i].position.y << std::endl;
+            ofs << "        z: " << resumes_[i].position.z << std::endl;
+            ofs << "        " << "orientation:" << std::endl;
+            ofs << "        x: " << resumes_[i].orientation.x << std::endl;
+            ofs << "        y: " << resumes_[i].orientation.y << std::endl;
+            ofs << "        z: " << resumes_[i].orientation.z << std::endl;
+            ofs << "        w: " << resumes_[i].orientation.w << std::endl;
+        }
+
         ofs.close();
 
         ROS_INFO_STREAM("suspend write success");
