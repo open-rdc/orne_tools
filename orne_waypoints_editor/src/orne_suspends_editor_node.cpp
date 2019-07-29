@@ -826,10 +826,10 @@ public:
         std::ofstream ofs(suspend_filename_.c_str(), std::ios::out);
         
 
-        ofs << "size" << ": " << suspends_.size() << std::endl;
         ofs << "suspend_pose" << ":" << std::endl;
         for(int i=0; i < suspends_.size(); i++){
             ofs << "    " << "- pose:" << std::endl;
+            ofs << "        " << "line_tracking: " << false << std::endl;
             ofs << "        " << "position:" << std::endl;
             ofs << "          x: " << suspends_[i].position.x << std::endl;
             ofs << "          y: " << suspends_[i].position.y << std::endl;
