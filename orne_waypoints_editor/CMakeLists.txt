@@ -145,6 +145,7 @@ include_directories(
 
 ## Declare a C++ executable
 add_executable(orne_waypoints_editor src/orne_waypoints_editor_node.cpp)
+add_executable(orne_suspends_editor src/orne_suspends_editor_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -155,6 +156,12 @@ target_link_libraries(orne_waypoints_editor
     ${catkin_LIBRARIES}
     ${yaml-cpp_LIBRARIES}
 )
+
+target_link_libraries(orne_suspends_editor 
+    ${catkin_LIBRARIES}
+    ${yaml-cpp_LIBRARIES}
+)
+
 
 #############
 ## Install ##
