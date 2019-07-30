@@ -828,6 +828,7 @@ public:
 
         ofs << "suspend_pose" << ":" << std::endl;
         for(int i=0; i < suspends_.size(); i++){
+            ofs << "#" << i+1 << std::endl;
             ofs << "    " << "- pose:" << std::endl;
             ofs << "        " << "line_tracking: " << false << std::endl;
             ofs << "        " << "position:" << std::endl;
