@@ -20,6 +20,10 @@
 #include <fstream>
 #include <math.h>
 
+static const int feedback_menu_id_wp_insert_prev = 3;
+static const int feedback_menu_id_wp_insert_next = 4;
+static const int feedback_menu_id_sp_insert_prev = 4;
+static const int feedback_menu_id_sp_insert_next = 5;
 
 #ifdef NEW_YAMLCPP
 template<typename T>
@@ -211,11 +215,11 @@ public:
         int wp_num= std::stoi(feedback->marker_name);
         ROS_INFO_STREAM("insert : " << feedback->menu_entry_id);
         geometry_msgs::Pose p = feedback->pose;
-        if (feedback->menu_entry_id == 3){
+        if (feedback->menu_entry_id == feedback_menu_id_wp_insert_prev){
             p.position.x -= 1.0;
             waypoints_.insert(waypoints_.begin() + wp_num, p.position);
 
-        } else if (feedback->menu_entry_id == 4) {
+        } else if (feedback->menu_entry_id == feedback_menu_id_wp_insert_next) {
             p.position.x += + 1.0;
             waypoints_.insert(waypoints_.begin() + wp_num + 1, p.position);
         }
@@ -267,13 +271,13 @@ public:
         sp.line_tracking = 0;
         geometry_msgs::Pose rp = feedback->pose;
 
-        if (feedback->menu_entry_id == 4){
+        if (feedback->menu_entry_id == feedback_menu_id_sp_insert_prev){
             sp.pose.position.x -= 1.0;
             rp.position.x -= 2.0;
             suspends_.insert(suspends_.begin() + sp_num, sp);
             resumes_.insert(resumes_.begin() + sp_num, rp);
 
-        } else if (feedback->menu_entry_id == 5) {
+        } else if (feedback->menu_entry_id == feedback_menu_id_sp_insert_next) {
             sp.pose.position.x +=  1.0;
             rp.position.x +=  2.0;
             suspends_.insert(suspends_.begin() + sp_num + 1, sp);
