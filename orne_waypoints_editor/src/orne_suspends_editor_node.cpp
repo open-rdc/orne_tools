@@ -20,6 +20,10 @@
 #include <fstream>
 #include <math.h>
 
+static const int feedback_menu_id_wp_insert_prev = 3;
+static const int feedback_menu_id_wp_insert_next = 4;
+static const int feedback_menu_id_sp_insert_prev = 4;
+static const int feedback_menu_id_sp_insert_next = 5;
 
 #ifdef NEW_YAMLCPP
 template<typename T>
@@ -28,6 +32,12 @@ void operator >> (const YAML::Node& node, T& i)
     i = node.as<T>();
 }
 #endif
+
+class SuspendPoint{
+public:
+    geometry_msgs::Pose pose;
+    int line_tracking;
+};
 
 using namespace visualization_msgs;
 
@@ -165,7 +175,7 @@ public:
         std::cout << name << std::endl;
         
         if(name.at(0) == 's')
-            suspends_.at(std::stoi((feedback->marker_name).substr(1))) = feedback->pose;
+            suspends_.at(std::stoi((feedback->marker_name).substr(1))).pose = feedback->pose;
         if(name.at(0) == 'r')
             resumes_.at(std::stoi((feedback->marker_name).substr(1))) = feedback->pose;
     }
@@ -182,6 +192,7 @@ public:
         interactive_markers::MenuHandler::EntryHandle sp_delete_menu_handler = sp_menu_handler_.insert("sp_delete", boost::bind(&WaypointsEditor::spDeleteCb, this, _1));
         interactive_markers::MenuHandler::EntryHandle sp_insert_menu_handler = sp_menu_handler_.insert("sp_Insert");
 
+        interactive_markers::MenuHandler::EntryHandle sp_line_tracking_menu_handler = sp_menu_handler_.insert("line_tracking", boost::bind(&WaypointsEditor::lineTrackingCb, this, _1));
         interactive_markers::MenuHandler::EntryHandle sp_mode = sp_menu_handler_.insert(sp_insert_menu_handler, "sp_Prev", boost::bind(&WaypointsEditor::spInsertCb, this, _1));
         sp_mode = sp_menu_handler_.insert(sp_insert_menu_handler, "sp_Next", boost::bind(&WaypointsEditor::spInsertCb, this, _1));
     }
@@ -204,11 +215,11 @@ public:
         int wp_num= std::stoi(feedback->marker_name);
         ROS_INFO_STREAM("insert : " << feedback->menu_entry_id);
         geometry_msgs::Pose p = feedback->pose;
-        if (feedback->menu_entry_id == 3){
+        if (feedback->menu_entry_id == feedback_menu_id_wp_insert_prev){
             p.position.x -= 1.0;
             waypoints_.insert(waypoints_.begin() + wp_num, p.position);
 
-        } else if (feedback->menu_entry_id == 4) {
+        } else if (feedback->menu_entry_id == feedback_menu_id_wp_insert_next) {
             p.position.x += + 1.0;
             waypoints_.insert(waypoints_.begin() + wp_num + 1, p.position);
         }
@@ -231,11 +242,11 @@ public:
         suspends_.erase(suspends_.begin() + sp_num);
         resumes_.erase(resumes_.begin() + sp_num);
         for (int i=sp_num; i<suspends_.size(); i++) {
-            geometry_msgs::Pose p;
+            SuspendPoint p;
             geometry_msgs::Pose rp;
             p = suspends_.at(i);
             rp = resumes_.at(i);
-            server->setPose("s"+std::to_string(i), p);
+            server->setPose("s"+std::to_string(i), p.pose);
             server->setPose("r"+std::to_string(i), rp);
         }
 
@@ -255,32 +266,44 @@ public:
         ROS_INFO_STREAM("menu_entry_id : " << feedback->menu_entry_id);
         int sp_num= std::stoi((feedback->marker_name).substr(1));
         ROS_INFO_STREAM("insert : " << feedback->menu_entry_id);
-        geometry_msgs::Pose p = feedback->pose;
+        SuspendPoint sp;
+        sp.pose = feedback->pose;
+        sp.line_tracking = 0;
         geometry_msgs::Pose rp = feedback->pose;
 
-        if (feedback->menu_entry_id == 3){
-            p.position.x -= 1.0;
+        if (feedback->menu_entry_id == feedback_menu_id_sp_insert_prev){
+            sp.pose.position.x -= 1.0;
             rp.position.x -= 2.0;
-            suspends_.insert(suspends_.begin() + sp_num, p);
+            suspends_.insert(suspends_.begin() + sp_num, sp);
             resumes_.insert(resumes_.begin() + sp_num, rp);
 
-        } else if (feedback->menu_entry_id == 4) {
-            p.position.x +=  1.0;
+        } else if (feedback->menu_entry_id == feedback_menu_id_sp_insert_next) {
+            sp.pose.position.x +=  1.0;
             rp.position.x +=  2.0;
-            suspends_.insert(suspends_.begin() + sp_num + 1, p);
+            suspends_.insert(suspends_.begin() + sp_num + 1, sp);
             resumes_.insert(resumes_.begin() + sp_num + 1, rp);
         }
 
         for (int i=sp_num; i<suspends_.size()-1; i++) {
-            geometry_msgs::Pose p;
+            SuspendPoint sp;
             geometry_msgs::Pose rp;
-            p = suspends_.at(i);
+            sp = suspends_.at(i);
             rp = resumes_.at(i);
-            server->setPose("s"+std::to_string(i), p);
+            server->setPose("s"+std::to_string(i), sp.pose);
             server->setPose("r"+std::to_string(i), rp);
         }
-        makeSpInteractiveMarker("s"+std::to_string(suspends_.size()-1), suspends_.at(suspends_.size()-1));
+        makeSpInteractiveMarker("s"+std::to_string(suspends_.size()-1), suspends_.at(suspends_.size()-1).pose);
         makeRpInteractiveMarker("r"+std::to_string(resumes_.size()-1), resumes_.at(suspends_.size()-1));
+        server->applyChanges();
+    }
+
+    void lineTrackingCb(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
+        ROS_INFO_STREAM("change line_tracking information : " << feedback->marker_name);
+        int sp_num = std::stoi((feedback->marker_name).substr(1));
+        std::cout << "sp_num" << sp_num << std::endl;
+        int l = suspends_[sp_num].line_tracking;
+        if (l == 0)suspends_[sp_num].line_tracking = 1;
+        else suspends_[sp_num].line_tracking = 0;
         server->applyChanges();
     }
 
@@ -349,7 +372,8 @@ public:
         for(int i=0; i!=suspends_.size(); i++){
             Marker marker;
             marker.type = Marker::TEXT_VIEW_FACING;
-            marker.text = "s"+std::to_string(i);
+            if (suspends_.at(i).line_tracking == true)marker.text = "s"+std::to_string(i)+"*";
+            else marker.text = "s"+std::to_string(i);
             marker.header.frame_id = world_frame_;
             marker.header.stamp = ros::Time(0);
             std::stringstream name;
@@ -357,7 +381,7 @@ public:
             marker.ns = name.str();
             marker.id = i;
             marker.lifetime = ros::Duration(0.5);
-            marker.pose = suspends_.at(i);
+            marker.pose = suspends_.at(i).pose;
             marker.pose.position.z = 1.5;
             marker.scale.z = 2.0;
             marker.color.r = 0.0;
@@ -374,7 +398,8 @@ public:
         for(int i=0; i!=resumes_.size(); i++){
             Marker marker;
             marker.type = Marker::TEXT_VIEW_FACING;
-            marker.text = "r"+std::to_string(i);
+            if (suspends_.at(i).line_tracking == true)marker.text = "r"+std::to_string(i)+"*";
+            else marker.text = "r"+std::to_string(i);
             marker.header.frame_id = world_frame_;
             marker.header.stamp = ros::Time(0);
             std::stringstream name;
@@ -537,7 +562,7 @@ public:
 
     void makeSpsInteractiveMarker(){
         for (int i=0; i!=suspends_.size(); i++){
-            makeSpInteractiveMarker("s"+std::to_string(i), suspends_.at(i));
+            makeSpInteractiveMarker("s"+std::to_string(i), suspends_.at(i).pose);
         }
     }
 
@@ -681,18 +706,20 @@ public:
                 const YAML::Node *sp_node = node.FindValue("suspend_pose");
             #endif
 
+
             if(sp_node != NULL){
                 for(int i=0;i<sp_node->size();i++){
-                    geometry_msgs::Pose pose;
-                    (*sp_node)[i]["pose"]["position"]["x"] >> pose.position.x;
-                    (*sp_node)[i]["pose"]["position"]["y"] >> pose.position.y;
-                    (*sp_node)[i]["pose"]["position"]["z"] >> pose.position.z;
-                    (*sp_node)[i]["pose"]["orientation"]["x"] >> pose.orientation.x;
-                    (*sp_node)[i]["pose"]["orientation"]["y"] >> pose.orientation.y;
-                    (*sp_node)[i]["pose"]["orientation"]["z"] >> pose.orientation.z;
-                    (*sp_node)[i]["pose"]["orientation"]["w"] >> pose.orientation.w;
+                    SuspendPoint sp;
+                    (*sp_node)[i]["pose"]["line_tracking"] >> sp.line_tracking;
+                    (*sp_node)[i]["pose"]["position"]["x"] >> sp.pose.position.x;
+                    (*sp_node)[i]["pose"]["position"]["y"] >> sp.pose.position.y;
+                    (*sp_node)[i]["pose"]["position"]["z"] >> sp.pose.position.z;
+                    (*sp_node)[i]["pose"]["orientation"]["x"] >> sp.pose.orientation.x;
+                    (*sp_node)[i]["pose"]["orientation"]["y"] >> sp.pose.orientation.y;
+                    (*sp_node)[i]["pose"]["orientation"]["z"] >> sp.pose.orientation.z;
+                    (*sp_node)[i]["pose"]["orientation"]["w"] >> sp.pose.orientation.w;
 
-                    suspends_.push_back(pose);
+                    suspends_.push_back(sp);
                 }
             }else{
                 return false;
@@ -829,16 +856,16 @@ public:
         ofs << "suspend_pose" << ":" << std::endl;
         for(int i=0; i < suspends_.size(); i++){
             ofs << "    " << "- pose:" << std::endl;
-            ofs << "        " << "line_tracking: " << false << std::endl;
+            ofs << "        " << "line_tracking: " << suspends_[i].line_tracking << std::endl;
             ofs << "        " << "position:" << std::endl;
-            ofs << "          x: " << suspends_[i].position.x << std::endl;
-            ofs << "          y: " << suspends_[i].position.y << std::endl;
-            ofs << "          z: " << suspends_[i].position.z << std::endl;
+            ofs << "          x: " << suspends_[i].pose.position.x << std::endl;
+            ofs << "          y: " << suspends_[i].pose.position.y << std::endl;
+            ofs << "          z: " << suspends_[i].pose.position.z << std::endl;
             ofs << "        " << "orientation:" << std::endl;
-            ofs << "          x: " << suspends_[i].orientation.x << std::endl;
-            ofs << "          y: " << suspends_[i].orientation.y << std::endl;
-            ofs << "          z: " << suspends_[i].orientation.z << std::endl;
-            ofs << "          w: " << suspends_[i].orientation.w << std::endl;
+            ofs << "          x: " << suspends_[i].pose.orientation.x << std::endl;
+            ofs << "          y: " << suspends_[i].pose.orientation.y << std::endl;
+            ofs << "          z: " << suspends_[i].pose.orientation.z << std::endl;
+            ofs << "          w: " << suspends_[i].pose.orientation.w << std::endl;
         }
 
         ofs << "resume_pose" << ":" << std::endl;
@@ -876,7 +903,7 @@ private:
     ros::Publisher marker_description_pub_;
     std::vector<geometry_msgs::Point> waypoints_;
     geometry_msgs::PoseStamped finish_pose_;
-    std::vector<geometry_msgs::Pose> suspends_;
+    std::vector<SuspendPoint> suspends_;
     std::vector<geometry_msgs::Pose> resumes_;
  
     visualization_msgs::MarkerArray marker_description_;
